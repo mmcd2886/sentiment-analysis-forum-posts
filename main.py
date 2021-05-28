@@ -273,7 +273,7 @@ while True:
 
         # SELECT the primary key 'ID' from the polls_threads record that was just inserted to use as foreign key in
         # polls_posts
-        url_id_query = connection.execute("SELECT id FROM polls_threads WHERE url = ?", (url_link))
+        url_id_query = connection.execute("SELECT id FROM polls_threads WHERE url = ?", url_link)
         id_num = url_id_query.fetchone()[0]
 
         # add the primary key from the above code to the dataframe which will be added to the polls_posts table. This
