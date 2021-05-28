@@ -183,16 +183,19 @@ while True:
         # ------Total Replies by a user-------#
         # Use groupby to group by Username, then use .size() to return a series that will show the total number for each
         # username. Convert this to a dataframe using .reset_index()
-        df3 = replies_info_df.groupby(["username"]).size().reset_index(name='total replies')
+        total_replies_by_username_df = replies_info_df.groupby(["username"]).size().reset_index(name='total replies')
+        # print number of unique users who posted in the thread
+        print("\n---------------------------\nTotal Unique Replies: ", total_replies_by_username_df["username"].count(),
+              "\n---------------------------")
 
         # Sort the dataframe users with least replies to greatest replies then get the tail which will have users with
         # the most posts. Do this because if the bar chart goes from greatest to least, the bar chart will be upside
         # down when plotted in matplot.
-        df3.sort_values(by=['total replies'], inplace=True, ascending=True)
-        df3 = df3.tail(15)
+        total_replies_by_username_df.sort_values(by=['total replies'], inplace=True, ascending=True)
+        total_replies_by_username_df = total_replies_by_username_df.tail(15)
         # matplot
         plt.figure(figsize=(13, 8))
-        plt.barh(df3["username"], df3["total replies"])
+        plt.barh(total_replies_by_username_df["username"], total_replies_by_username_df["total replies"])
         plt.xlabel("replies", fontsize=15)
         plt.ylabel("username", fontsize=15)
         plt.title("Total Replies by Username", fontsize=30)
