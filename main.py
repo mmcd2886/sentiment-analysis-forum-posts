@@ -1,14 +1,15 @@
-from sqlalchemy import create_engine, MetaData, Table, insert
-from nltk.corpus import stopwords
-import nltk
-import matplotlib.pyplot as plt
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import bs4 as bs
 import pandas as pd
 import requests
-from pandas import DataFrame
+import nltk
 import time
 import pathlib
+import matplotlib.pyplot as plt
+from sqlalchemy import create_engine, MetaData, Table, insert
+from nltk.corpus import stopwords
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from pandas import DataFrame
+
 
 # Dataframes will be fully visible when printing
 pd.set_option("display.max_rows", None, "display.max_columns", None, "display.max_colwidth", None)
@@ -265,7 +266,7 @@ while True:
         replies_info_df.to_csv(csv_file_path, index=False, mode="a", header=False, encoding='utf-8-sig')
 
         # Connect to SQLITE DB
-        engine = create_engine('sqlite:////Users/untitled/pythonProject/mysite/db.sqlite3')
+        engine = create_engine('sqlite://///Users/untitled/pycharmProjects/forum-project/mysite/db.sqlite3')
         metadata = MetaData(bind=engine)
         connection = engine.connect()
 
