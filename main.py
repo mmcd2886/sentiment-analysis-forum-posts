@@ -266,7 +266,7 @@ while True:
         replies_info_df.to_csv(csv_file_path, index=False, mode="a", header=False, encoding='utf-8-sig')
 
         # Connect to SQLITE DB
-        engine = create_engine('sqlite://///Users/untitled/pycharmProjects/forum-project/mysite/db.sqlite3')
+        engine = create_engine('sqlite://///Users/default/PycharmProjects/django-forum/mysite/db.sqlite3')
         metadata = MetaData(bind=engine)
         connection = engine.connect()
 
