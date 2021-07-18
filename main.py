@@ -9,6 +9,9 @@ from sqlalchemy import create_engine, MetaData, Table, insert
 from nltk.corpus import stopwords
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from pandas import DataFrame
+#nltk.download('vader_lexicon')
+#nltk.download('punkt')
+nltk.download('stopwords')
 
 
 # Dataframes will be fully visible when printing
@@ -238,7 +241,7 @@ while True:
         # --Sentiment with and without quotes matplot graph-- #
         # groupby the sentiment column (pos. neg. neut.) add up each and create the total sentiment column
         # Visualize Sentiment in pie chart
-        sentiment_labels = ["Negative", "Neutural", "Positive"]
+        sentiment_labels = ["Negative", "Neutral", "Positive"]
         sentiment_with_quotes_df = replies_info_df.groupby(["sentiment"]).size().reset_index(name="total sentiment")
         total_sentiment_with_quotes = sentiment_with_quotes_df["total sentiment"].tolist()
         plt.figure(figsize=(7, 7))
@@ -249,7 +252,7 @@ while True:
         # display(sentiment_with_quotes_df)
 
         # --Sentiment without quotes matplot graph-- #
-        # groupby the sentiment column (pos. neg. neut.) add up each a create the total sentiment column, but do no
+        # groupby the sentiment column (pos. neg. neut.) add up each a create the total sentiment column, but do not
         # include replies that have quotes from other users in them because this could impact sentiment to the thread
         # title
         no_quotes_df = replies_info_df[replies_info_df["quoted"] == "No quote"]
