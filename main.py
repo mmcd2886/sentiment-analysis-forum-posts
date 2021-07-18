@@ -9,9 +9,9 @@ from sqlalchemy import create_engine, MetaData, Table, insert
 from nltk.corpus import stopwords
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from pandas import DataFrame
-#nltk.download('vader_lexicon')
-#nltk.download('punkt')
-nltk.download('stopwords')
+# nltk.download('vader_lexicon')
+# nltk.download('punkt')
+# nltk.download('stopwords')
 
 
 # Dataframes will be fully visible when printing
