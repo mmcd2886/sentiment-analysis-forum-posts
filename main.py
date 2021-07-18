@@ -273,7 +273,7 @@ while True:
         metadata = MetaData(bind=engine)
         connection = engine.connect()
 
-        # insert url, thread title etc.. into polls_threads table
+        # insert url, thread title, etc.. into polls_threads table
         table = Table('polls_threads', metadata, autoload=True, autoload_with=engine)
         insert_statement = insert(table).values(first_comment_of_thread_dict).prefix_with("OR IGNORE")
         results = connection.execute(insert_statement)
