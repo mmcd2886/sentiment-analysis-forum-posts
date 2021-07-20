@@ -34,8 +34,10 @@ connection = engine.connect()
 # User can enter which page to of thread to start collecting information on
 url_link = input("Enter URL for thread: ").rstrip()
 # strip everything after the last / of the URL so that you can append 'page-' to the url
-split = url_link.rsplit("/", 0)
+split = url_link.rsplit("/", 1)
 split_url = (split[0])
+
+print(split_url)
 
 # https://stackoverflow.com/questions/36439032/how-do-you-pass-through-a-python-variable-into-sqlite3-query
 # Query the last scraped page number using the URL in the posts_threads table. This will be the URL that scraping
@@ -45,8 +47,9 @@ try:
     forum_thread_page_num = last_scraped_page_query.fetchone()[0]
     print("The farthest page scraped is: ", forum_thread_page_num)
 except TypeError:
-    print('cannot select last_page_scraped')
+    print("This url has not been scraped yet")
     forum_thread_page_num = 1
+
 
 """
 file_name = input("Enter a name for the CSV file. Leave blank to not save: ").rstrip()
@@ -84,8 +87,9 @@ replies_info_df = pd.DataFrame()
 
 while True:
     time.sleep(0.5)
-    url = url_link + 'page-' + str(forum_thread_page_num)
+    url = split_url + '/page-' + str(forum_thread_page_num)
     print(forum_thread_page_num)
+    print(url)
 
     # create bs object from the user entered url
     request = requests.get(url)
@@ -165,8 +169,8 @@ while True:
     # if there are less than 50 usernames it means it is the last page and should break
     if len(username_list) < 50:
         # Rename the columns of the dataframe
-        replies_info_df.rename(columns={0: "username", 1: "date_time", 2: "score", 3: "quoted", 4: "sentiment",
-                                        5: "replies"}, inplace=True)
+        replies_info_df = replies_info_df.rename(columns={0: "username", 1: "date_time", 2: "score", 3: "quoted", 4: "sentiment",
+                                        5: "replies"})
 
         # Convert date & time columns from string to datetime objects so that they can be manipulated with pandas
         replies_info_df["date_time"] = pd.to_datetime(replies_info_df["date_time"], format="%Y-%m-%d %H:%M:%S")
@@ -180,7 +184,7 @@ while True:
         pop_list = ['sentiment', 'quoted', 'score']
         for word in pop_list:
             first_comment_of_thread_dict.pop(word)
-        first_comment_of_thread_dict.update({'url': url_link})
+        first_comment_of_thread_dict.update({'url': split_url})
         first_comment_of_thread_dict.update({'title': thread_title})
         first_comment_of_thread_dict.update({'last_page_scraped': forum_thread_page_num})
         replies_info_df = replies_info_df.drop(replies_info_df.index[0])
