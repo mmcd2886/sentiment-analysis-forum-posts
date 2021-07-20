@@ -1,6 +1,7 @@
 import bs4 as bs
 import pandas as pd
 import requests
+import sqlite3
 import nltk
 import time
 import pathlib
@@ -25,18 +26,40 @@ new_words = {
 }
 sid.lexicon.update(new_words)
 
+# Connect to SQLITE DB
+engine = create_engine('sqlite://///Users/default/PycharmProjects/django-forum/mysite/db.sqlite3')
+metadata = MetaData(bind=engine)
+connection = engine.connect()
+
 # User can enter which page to of thread to start collecting information on
-url_link = input("Enter URL for first page of thread: ").rstrip()
+url_link = input("Enter URL for thread: ").rstrip()
+# strip everything after the last / of the URL so that you can append 'page-' to the url
+split = url_link.rsplit("/", 0)
+split_url = (split[0])
+
+# https://stackoverflow.com/questions/36439032/how-do-you-pass-through-a-python-variable-into-sqlite3-query
+# Query the last scraped page number using the URL in the posts_threads table. This will be the URL that scraping
+# starts on so scrapes are not duplicated
+last_scraped_page_query = connection.execute("SELECT last_page_scraped FROM polls_threads WHERE url = ?", split_url)
+try:
+    forum_thread_page_num = last_scraped_page_query.fetchone()[0]
+    print("The farthest page scraped is: ", forum_thread_page_num)
+except TypeError:
+    print('cannot select last_page_scraped')
+    forum_thread_page_num = 1
+
+"""
 file_name = input("Enter a name for the CSV file. Leave blank to not save: ").rstrip()
 
 # User can enter which page of thread to start collecting information on
-forum_thread_page_num = 1
 starting_page = input("Enter number for which page of thread to start on. Leave blank to start on first page of "
                       "thread. ").rstrip()
 if starting_page != '':
     starting_page = int(starting_page)
     forum_thread_page_num = starting_page
+"""
 
+"""
 # User can enter which page of thread to stop collecting information on
 ending_page = input(
     "Enter number for which page of thread to end on. Leave blank to end on last page of thread. ").rstrip()
@@ -44,7 +67,9 @@ if ending_page == '':
     ending_page = float('inf')
 else:
     ending_page = int(ending_page)
+"""
 
+"""
 # create the csv with headers if csv does not already exist
 csv_file_path = pathlib.Path(file_name + '.csv')
 if csv_file_path.exists():
@@ -53,6 +78,7 @@ if csv_file_path.exists():
 else:
     csv_header_df = pd.DataFrame(columns=['name', 'date_time', 'score', 'quote', 'sentiment', 'reply'])
     csv_header_df.to_csv(csv_file_path, index=False, mode="a", header=True, encoding='utf-8-sig')
+"""
 
 replies_info_df = pd.DataFrame()
 
@@ -79,11 +105,11 @@ while True:
         username_list.append(new_name)
 
     # find the date & time that user's comments were posted
-    date_soup = soup.findAll('div', {'class': 'message-attribution-main'})
+    date_soup = soup.findAll("ul", {'class': 'message-attribution-main listInline'})
     date_time_list = []
     # date and time is found in the '<time>' tag. In the time tag there is a variable called "datetime" that is = to
     # date of the post and formatted as '2020-09-24T18:28:56-0400', I store this datetime as a list object and slice it
-    # so that I get only '2020-09-24 18:28:56 date_time.
+    # so that I get only '2020-09-24 18:28:56' date_time.
     for item in date_soup:
         date_time = item.find('time').attrs['datetime'][0:19]
         date_time_list.append(date_time)
@@ -137,10 +163,11 @@ while True:
     replies_info_df = replies_info_df.append(df)
 
     # if there are less than 50 usernames it means it is the last page and should break
-    if len(username_list) < 50 or forum_thread_page_num == ending_page:
+    if len(username_list) < 50:
         # Rename the columns of the dataframe
-        replies_info_df.rename(columns={0: "username", 1: "date_time", 2: "score", 3: "quoted", 4: "sentiment", 5: "replies"},
-                   inplace=True)
+        replies_info_df.rename(columns={0: "username", 1: "date_time", 2: "score", 3: "quoted", 4: "sentiment",
+                                        5: "replies"}, inplace=True)
+
         # Convert date & time columns from string to datetime objects so that they can be manipulated with pandas
         replies_info_df["date_time"] = pd.to_datetime(replies_info_df["date_time"], format="%Y-%m-%d %H:%M:%S")
 
@@ -155,27 +182,30 @@ while True:
             first_comment_of_thread_dict.pop(word)
         first_comment_of_thread_dict.update({'url': url_link})
         first_comment_of_thread_dict.update({'title': thread_title})
+        first_comment_of_thread_dict.update({'last_page_scraped': forum_thread_page_num})
         replies_info_df = replies_info_df.drop(replies_info_df.index[0])
 
+
+        """
         # ------Total Replies on a date in Chron order-------#
         # Groupby Day using freq='D' and then find the size() and add it to the column Total Replies which will tally
         # the total replies for each day. Convert the .size() series that it returns to a dataframe using .reset_index.
         # Convert DateTime object to just date using strftime. if there is only one date worth of replies,
         # use the if statement to group by hours instead to display hourly data for the single day. Else groupby day
         # and show daily Total Replies.
-        df4 = replies_info_df.set_index("date_time").groupby(pd.Grouper(freq='D')).size().reset_index(name='total replies')
-        df4["date_time"] = (df4["date_time"].dt.strftime('%Y-%m-%d'))
+        total_posts_datetime_df = replies_info_df.set_index("date_time").groupby(pd.Grouper(freq='D')).size().reset_index(name='total replies')
+        total_posts_datetime_df["date_time"] = (total_posts_datetime_df["date_time"].dt.strftime('%Y-%m-%d'))
         # This date will be the x-axis title if there is only one day of Replies
-        xlabel_date = str(df4["date_time"][0])
-        if len(df4["date_time"]) == 1:
-            df4 = replies_info_df.set_index("date_time").groupby(pd.Grouper(freq='H')).size().reset_index(name='total replies')
-            df4["date_time"] = (df4["date_time"].dt.strftime('%H:%M:%S'))
+        xlabel_date = str(total_posts_datetime_df["date_time"][0])
+        if len(total_posts_datetime_df["date_time"]) == 1:
+            total_posts_datetime_df = replies_info_df.set_index("date_time").groupby(pd.Grouper(freq='H')).size().reset_index(name='total replies')
+            total_posts_datetime_df["date_time"] = (total_posts_datetime_df["date_time"].dt.strftime('%H:%M:%S'))
             # I am calling .plot on the Dataframe using pandas. This method references the Matplot API
-            df4.set_index("date_time").plot.bar(figsize=(13, 8))
+            total_posts_datetime_df.set_index("date_time").plot.bar(figsize=(13, 8))
             plt.xlabel(xlabel_date + " (Hourly)", fontsize=15)
             plt.title("total replies by hour", fontsize=30, color="Black")
         else:
-            df4.set_index("date_time").plot.bar(figsize=(13, 8))
+            total_posts_datetime_df.set_index("date_time").plot.bar(figsize=(13, 8))
             plt.xlabel("Day", fontsize=15)
             plt.title("total replies by day", fontsize=30, color="Black")
         plt.ylabel("total replies", fontsize=15)
@@ -183,6 +213,7 @@ while True:
         # limit the number of x axis labels using 'nbins='
         plt.locator_params(axis='x', nbins=13)
         plt.show()
+
 
         # ------Total Replies by a user-------#
         # Use groupby to group by Username, then use .size() to return a series that will show the total number for each
@@ -267,13 +298,9 @@ while True:
 
         # Write dataFrame to csv in append mode with the header removed
         replies_info_df.to_csv(csv_file_path, index=False, mode="a", header=False, encoding='utf-8-sig')
+        """
 
-        # Connect to SQLITE DB
-        engine = create_engine('sqlite://///Users/default/PycharmProjects/django-forum/mysite/db.sqlite3')
-        metadata = MetaData(bind=engine)
-        connection = engine.connect()
-
-        # insert url, thread title, etc.. into polls_threads table
+        # insert url, thread title, etc.. into polls_threads table. 'OR IGNORE' will ignore if record exists
         table = Table('polls_threads', metadata, autoload=True, autoload_with=engine)
         insert_statement = insert(table).values(first_comment_of_thread_dict).prefix_with("OR IGNORE")
         results = connection.execute(insert_statement)
@@ -293,6 +320,8 @@ while True:
         insert_statement = insert(table).values(insert_values_forum_table).prefix_with("OR IGNORE")
         results = connection.execute(insert_statement)
 
+        # close the db connection to prevent a database error
+        connection.close()
         break
     else:
         forum_thread_page_num = forum_thread_page_num + 1
