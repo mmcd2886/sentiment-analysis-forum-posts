@@ -37,7 +37,6 @@ url_link = input("Enter URL for thread: ").rstrip()
 split = url_link.rsplit("/", 1)
 split_url = (split[0])
 
-print(split_url)
 
 # https://stackoverflow.com/questions/36439032/how-do-you-pass-through-a-python-variable-into-sqlite3-query
 # Query the last scraped page number using the URL in the posts_threads table. This will be the URL that scraping
@@ -45,7 +44,7 @@ print(split_url)
 last_scraped_page_query = connection.execute("SELECT last_page_scraped FROM polls_threads WHERE url = ?", split_url)
 try:
     forum_thread_page_num = last_scraped_page_query.fetchone()[0]
-    print("The farthest page scraped is: ", forum_thread_page_num)
+    print("The furthest page scraped is: ", forum_thread_page_num)
 except TypeError:
     print("This url has not been scraped yet")
     forum_thread_page_num = 1
@@ -175,7 +174,7 @@ while True:
         # Convert date & time columns from string to datetime objects so that they can be manipulated with pandas
         replies_info_df["date_time"] = pd.to_datetime(replies_info_df["date_time"], format="%Y-%m-%d %H:%M:%S")
 
-        print("\n--------------------\nTotal Replies: ", replies_info_df["username"].count(), "\n--------------------")
+        # print("\n--------------------\nTotal Replies: ", replies_info_df["username"].count(), "\n--------------------")
 
         # convert the first row of the dataframe to a dictionary and remove it from the dataframe. The first row of the
         # dataframe is the creator of the post and the first post of the thread. This dictionary will be uploaded to a
@@ -311,7 +310,7 @@ while True:
 
         # SELECT the primary key 'ID' from the polls_threads record that was just inserted to use as foreign key in
         # polls_posts
-        url_id_query = connection.execute("SELECT id FROM polls_threads WHERE url = ?", url_link)
+        url_id_query = connection.execute("SELECT id FROM polls_threads WHERE url = ?", split_url)
         id_num = url_id_query.fetchone()[0]
 
         # add the primary key from the above code to the dataframe which will be added to the polls_posts table. This
