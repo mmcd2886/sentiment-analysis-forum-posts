@@ -43,7 +43,7 @@ split_url = (split[0])
 # starts on so scrapes are not duplicated
 last_scraped_page_query = connection.execute("SELECT last_page_scraped FROM polls_threads WHERE url = ?", split_url)
 try:
-    forum_thread_page_num = last_scraped_page_query.fetchone()[0]
+    forum_thread_page_num = int(last_scraped_page_query.fetchone()[0])
     print("The furthest page scraped is: ", forum_thread_page_num)
 except TypeError:
     print("This url has not been scraped yet")
@@ -93,6 +93,19 @@ while True:
     request = requests.get(url)
     response = request.text
     soup = bs.BeautifulSoup(response, 'lxml')
+    #print(soup)
+
+    # Find the thread page-number navigation on the page. The last number on the navigation is the last page of the
+    # thread. if it cannot find the page-nav it means it does not exist and there is only one page for the thread
+    # If it does find that page-nav it will find the text (page numbers) and store the last one. Have to use [-2]
+    # because the last element is empty for some reason.
+    last_page_of_thread_soup = soup.find("ul", {"class": "pageNav-main"})
+    if last_page_of_thread_soup is None:
+        last_page_of_thread = 1
+        print("This thread has", last_page_of_thread, "pages.")
+    else:
+        last_page_of_thread = int((list(last_page_of_thread_soup)[-2].get_text()))
+        print("This thread has ", last_page_of_thread, " pages.")
 
     # get the thread title
     thread_title_soup = soup.find("div", {"class": "p-title"})
@@ -164,8 +177,8 @@ while True:
     df = DataFrame(new_dict)
     replies_info_df = replies_info_df.append(df)
 
-    # if there are less than 50 usernames it means it is the last page and should break
-    if len(username_list) < 50:
+    # the script will run this if statement when on the last page of the thread.
+    if forum_thread_page_num == last_page_of_thread:
         # Rename the columns of the dataframe
         replies_info_df = replies_info_df.rename(columns={0: "username", 1: "date_time", 2: "score", 3: "quoted", 4: "sentiment",
                                         5: "replies"})
