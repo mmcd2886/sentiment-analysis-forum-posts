@@ -31,7 +31,7 @@ engine = create_engine('sqlite://///Users/default/PycharmProjects/django-forum/m
 metadata = MetaData(bind=engine)
 connection = engine.connect()
 
-# User can enter url from any page of the thread. 
+# User can enter any page of thread
 url_link = input("Enter URL for thread: ").rstrip()
 # strip everything after the last / of the URL so that you can append 'page-' to the url
 split = url_link.rsplit("/", 1)
@@ -95,7 +95,6 @@ while True:
     request = requests.get(url)
     response = request.text
     soup = bs.BeautifulSoup(response, 'lxml')
-    #print(soup)
 
     # Find the thread page-number UI navigation on the page. The last number on the navigation is the last page of the
     # thread. if it cannot find the page-nav it means it does not exist and there is only one page for the thread
