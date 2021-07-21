@@ -88,7 +88,6 @@ while True:
     time.sleep(0.5)
     url = split_url + '/page-' + str(forum_thread_page_num)
     print(forum_thread_page_num)
-    print(url)
 
     # create bs object from the user entered url
     request = requests.get(url)
@@ -325,6 +324,7 @@ while True:
 
         # close the db connection to prevent a database error
         connection.close()
+        print("Finished")
         break
     else:
         forum_thread_page_num = forum_thread_page_num + 1
