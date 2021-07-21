@@ -31,7 +31,7 @@ engine = create_engine('sqlite://///Users/default/PycharmProjects/django-forum/m
 metadata = MetaData(bind=engine)
 connection = engine.connect()
 
-# User can enter which page to of thread to start collecting information on
+# User can enter url from any page of the thread. 
 url_link = input("Enter URL for thread: ").rstrip()
 # strip everything after the last / of the URL so that you can append 'page-' to the url
 split = url_link.rsplit("/", 1)
