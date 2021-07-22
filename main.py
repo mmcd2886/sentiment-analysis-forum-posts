@@ -39,7 +39,6 @@ split_url = (split[0])
 """
 
 
-
 # create bs object from the user entered url
 request = requests.get("https://www.resetera.com/forums/gaming-forum.7/")
 response = request.text
@@ -48,8 +47,8 @@ soup = bs.BeautifulSoup(response, 'lxml')
 # create a list of urls for the threads on a page.
 thread_url_list = []
 last_page_of_thread_soup = soup.find("div", {"class": "structItemContainer-group js-threadList"})
-for x in last_page_of_thread_soup.findAll("div", {"class": "structItem-title"}):
-    for url in x.find_all('a', href=True):
+for div in last_page_of_thread_soup.findAll("div", {"class": "structItem-title"}):
+    for url in div.find_all('a', href=True):
         thread_url_list.append('https://www.resetera.com' + url['href'])
 
 for base_url in thread_url_list:
@@ -136,10 +135,10 @@ for base_url in thread_url_list:
 
         # create list of usernames so that they can later be matched to comments
         username_list = []
-        username_soup = soup.findAll("a", {"itemprop": "name"})
+        username_soup = soup.find_all("h4", {"class": "message-name"})
         for username in username_soup:
-            name = username.get_text()
-            username_list.append(name)
+            username_list.append(username.text)
+        print("username_list length", (len(username_list)))
 
         # find the date & time that user's comments were posted
         date_soup = soup.findAll("ul", {'class': 'message-attribution-main listInline'})
