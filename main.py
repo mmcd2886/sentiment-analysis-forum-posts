@@ -10,6 +10,7 @@ from sqlalchemy import create_engine, MetaData, Table, insert
 from nltk.corpus import stopwords
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from pandas import DataFrame
+
 # nltk.download('vader_lexicon')
 # nltk.download('punkt')
 # nltk.download('stopwords')
@@ -37,7 +38,6 @@ url_link = input("Enter URL for thread: ").rstrip()
 split = url_link.rsplit("/", 1)
 split_url = (split[0])
 """
-
 
 # create bs object from the user entered url
 request = requests.get("https://www.resetera.com/forums/gaming-forum.7/")
@@ -67,18 +67,17 @@ for base_url in thread_url_list:
         forum_thread_page_num = 1
         print("This url has not been scraped yet")
 
-
     """
     file_name = input("Enter a name for the CSV file. Leave blank to not save: ").rstrip()
-    
+
     # User can enter which page of thread to start collecting information on
     starting_page = input("Enter number for which page of thread to start on. Leave blank to start on first page of "
                           "thread. ").rstrip()
     if starting_page != '':
         starting_page = int(starting_page)
         forum_thread_page_num = starting_page
-    
-    
+
+
     # User can enter which page of thread to stop collecting information on
     ending_page = input(
         "Enter number for which page of thread to end on. Leave blank to end on last page of thread. ").rstrip()
@@ -86,8 +85,8 @@ for base_url in thread_url_list:
         ending_page = float('inf')
     else:
         ending_page = int(ending_page)
-    
-    
+
+
     # create the csv with headers if csv does not already exist
     csv_file_path = pathlib.Path(file_name + '.csv')
     if csv_file_path.exists():
@@ -131,14 +130,13 @@ for base_url in thread_url_list:
             thread_title = thread_title_soup.get_text()
             thread_title = thread_title.replace('\n', ' ')
 
-        # create list of usernames so that they can later be matched to comments
+        # create list of usernames so that they can later be matched to replies
         username_list = []
         username_soup = soup.find_all("h4", {"class": "message-name"})
         for username in username_soup:
             username_list.append(username.text)
-        print("username_list length", (len(username_list)))
 
-        # find the date & time that user's comments were posted
+        # find the date & time that user's replies were posted
         date_soup = soup.findAll("ul", {'class': 'message-attribution-main listInline'})
         date_time_list = []
         # date and time is found in the '<time>' tag. In the time tag there is a variable called "datetime" that is = to
@@ -148,34 +146,34 @@ for base_url in thread_url_list:
             date_time = item.find('time').attrs['datetime'][0:19]
             date_time_list.append(date_time)
 
-        # find the thread's comments
-        comment_soup = soup.findAll("div", {"class": "bbWrapper"})
+        # find the thread's replies
+        replies_soup = soup.findAll("div", {"class": "bbWrapper"})
 
         # Replies that quote other users will contain ("div", {"class": "bbCodeBlock-expandContent"}). If this is found
-        # 'Quote' is added to the quote_reply_list Else: No Quote is added to list. To access comment, return only the
-        # text from the comments. 'recursive=False' prevents parsing any sub-tags. All needed text is a direct child
+        # 'Quote' is added to the quote_reply_list Else: No Quote is added to list. To access reply, return only the
+        # text from the replies. 'recursive=False' prevents parsing any sub-tags. All needed text is a direct child
         # of -> "div", {"class": "bbWrapper"}
-        comment_list = []
+        replies_list = []
         quote_reply_list = []
-        for comment in comment_soup:
-            replies_to_quotes = comment.find_all("div", {"class": "bbCodeBlock-expandContent"})
+        for reply in replies_soup:
+            replies_to_quotes = reply.find_all("div", {"class": "bbCodeBlock-expandContent"})
             if len(replies_to_quotes) > 0:
                 quoted_or_not = "quote"
             else:
                 quoted_or_not = "No quote"
             quote_reply_list.append(quoted_or_not)
 
-            comment = comment.find_all(text=True, recursive=False)
-            comment = ''.join(comment)  # convert list to string
-            comment = comment.replace('\n', ' ')  # remove new lines for paragraphs (combines multiple paragraphs to one)
-            if not comment:  # if comment is empty
-                comment = 'N/A'
-            comment_list.append(comment)
+            reply = reply.find_all(text=True, recursive=False)
+            reply = ''.join(reply)  # convert list to string
+            reply = reply.replace('\n', ' ')  # remove new lines for paragraphs (combines multiple paragraphs to one)
+            if not reply:  # if reply is empty
+                reply = 'N/A'
+            replies_list.append(reply)
 
-        # use sentimentAnalyzer for each comment and create list of the 'compound' score for each comment
+        # use sentimentAnalyzer for each reply and create list of the 'compound' score for each reply
         compound_result_list = []
-        for comment in comment_list:
-            sentiment_result_dict = sid.polarity_scores(comment)
+        for reply in replies_list:
+            sentiment_result_dict = sid.polarity_scores(reply)
             compound_result = sentiment_result_dict.get('compound')
             compound_result_list.append(compound_result)
 
@@ -191,16 +189,20 @@ for base_url in thread_url_list:
                 sentiment = "Positive"
             sentiment_list.append(sentiment)
 
+        # Find the length of the username_list. Then add page numbers to the number
+        amount_of_replies_on_page = len(username_list)
+        page_of_thread_list = [forum_thread_page_num] * amount_of_replies_on_page
         # combine five lists and convert to DataFrame
-        zipped_dict = zip(username_list, date_time_list, compound_result_list, quote_reply_list, sentiment_list, comment_list)
-        zipped_df = DataFrame(zipped_dict)
-        replies_info_df = replies_info_df.append(zipped_df)
+        replies_zipped_dict = zip(username_list, date_time_list, compound_result_list, quote_reply_list, sentiment_list,
+                          replies_list, page_of_thread_list)
+        replies_zipped_df = DataFrame(replies_zipped_dict)
+        replies_info_df = replies_info_df.append(replies_zipped_df)
 
         # the script will run this if statement when on the last page of the thread.
         if forum_thread_page_num == last_page_of_thread:
             # Rename the columns of the dataframe
             replies_info_df = replies_info_df.rename(columns={0: "username", 1: "date_time", 2: "score", 3: "quoted",
-                                                              4: "sentiment", 5: "replies"})
+                                                              4: "sentiment", 5: "replies", 6: "thread_page"})
 
             # Convert date & time columns from string to datetime objects so that they can be manipulated with pandas
             replies_info_df["date_time"] = pd.to_datetime(replies_info_df["date_time"], format="%Y-%m-%d %H:%M:%S")
@@ -211,7 +213,7 @@ for base_url in thread_url_list:
             # thread. This dictionary will be uploaded to the threads table.
             if url_has_already_been_scraped == "No":
                 thread_info_dict = replies_info_df.to_dict('records')[0]
-                pop_list = ['sentiment', 'quoted', 'score']
+                pop_list = ['sentiment', 'quoted', 'score', 'thread_page']
                 for word in pop_list:
                     thread_info_dict.pop(word)
                 thread_info_dict.update({'url': base_url})
@@ -251,8 +253,8 @@ for base_url in thread_url_list:
             # limit the number of x axis labels using 'nbins='
             plt.locator_params(axis='x', nbins=13)
             plt.show()
-    
-    
+
+
             # ------Total Replies by a user-------#
             # Use groupby to group by Username, then use .size() to return a series that will show the total number for each
             # username. Convert this to a dataframe using .reset_index()
@@ -260,7 +262,7 @@ for base_url in thread_url_list:
             # print number of unique users who posted in the thread
             print("\n---------------------------\nTotal Unique Replies: ", total_replies_by_username_df["username"].count(),
                   "\n---------------------------")
-    
+
             # Sort the dataframe users with least replies to greatest replies then get the tail which will have users with
             # the most posts. Do this because if the bar chart goes from greatest to least, the bar chart will be upside
             # down when plotted in matplot.
@@ -273,32 +275,32 @@ for base_url in thread_url_list:
             plt.ylabel("username", fontsize=15)
             plt.title("Total Replies by Username", fontsize=30)
             plt.show()
-    
+
             # make everything lower case then tokenize
             lower_case_replies_info_df = replies_info_df['replies'].str.lower().str.cat(sep=' ')
             tokenized_replies_list = nltk.tokenize.word_tokenize(lower_case_replies_info_df)
-    
+
             # remove stop words
             stop_words = set(stopwords.words('english'))
             replies_with_no_stop_words_list = []
             for word in tokenized_replies_list:
                 if word not in stop_words:
                     replies_with_no_stop_words_list.append(word)
-    
+
             # remove punctuation
             cleaned_text_list = []
             for word in replies_with_no_stop_words_list:
                 if word.isalpha():
                     cleaned_text_list.append(word)
             word_dist = nltk.FreqDist(cleaned_text_list)
-    
+
             # number of top words to display in matplot
             top_words = 50
             df_top_words = pd.DataFrame(word_dist.most_common(top_words), columns=['Word', 'Frequency'])
-    
+
             # sort from least to greatest otherwise barchart will be upside down
             df_top_words.sort_values(by=['Frequency'], inplace=True, ascending=True)
-    
+
             # create matplot for word frequency
             plt.figure(figsize=(12, 10))
             plt.barh(df_top_words["Word"], df_top_words["Frequency"])
@@ -306,7 +308,7 @@ for base_url in thread_url_list:
             plt.ylabel("Frequency", fontsize=15)
             plt.title("Most Frequent Words", fontsize=30)
             plt.show()
-    
+
             # --Sentiment with and without quotes matplot graph-- #
             # groupby the sentiment column (pos. neg. neut.) add up each and create the total sentiment column
             # Visualize Sentiment in pie chart
@@ -319,7 +321,7 @@ for base_url in thread_url_list:
             plt.title("sentiment of all replies", fontsize=20)
             plt.show()
             # display(sentiment_with_quotes_df)
-    
+
             # --Sentiment without quotes matplot graph-- #
             # groupby the sentiment column (pos. neg. neut.) add up each a create the total sentiment column, but do not
             # include replies that have quotes from other users in them because this could impact sentiment to the thread
@@ -333,7 +335,7 @@ for base_url in thread_url_list:
             plt.title("Sentiment of replies that do not contain quotes from other users", fontsize=20)
             plt.show()
             # display(sentiment_no_quotes_df)
-    
+
             # Write dataFrame to csv in append mode with the header removed
             replies_info_df.to_csv(csv_file_path, index=False, mode="a", header=False, encoding='utf-8-sig')
             """
@@ -360,3 +362,4 @@ for base_url in thread_url_list:
             break
         else:
             forum_thread_page_num = forum_thread_page_num + 1
+
