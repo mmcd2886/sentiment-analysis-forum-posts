@@ -120,13 +120,11 @@ for base_url in thread_url_list:
             last_page_of_thread_soup = soup.find("ul", {"class": "pageNav-main"})
             if last_page_of_thread_soup is None:
                 last_page_of_thread = 1
-                print("This thread has", last_page_of_thread, "pages.")
             else:
                 last_page_of_thread = int((list(last_page_of_thread_soup)[-2].get_text()))
-                print("This thread has ", last_page_of_thread, " pages.")
         while_loop_iterator = 1
 
-        print("Page: ", forum_thread_page_num)
+        print("Page:", forum_thread_page_num, "out of", last_page_of_thread)
         # Get the thread title only when scraping the first page. Don't need to rescrape the title for every page.
         if forum_thread_page_num == 1:
             thread_title_soup = soup.find("div", {"class": "p-title"})
