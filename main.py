@@ -110,11 +110,11 @@ for base_url in thread_url_list:
         response = request.text
         soup = bs.BeautifulSoup(response, 'lxml')
 
-        # Find the thread page-number UI navigation on the page. The last number on the navigation is the last page of the
-        # thread. if it cannot find the page-nav it means it does not exist and there is only one page for the thread
-        # If it finds th¸ page-nav it will find the text (page numbers) and store the last one. Have to use [-2]
-        # because the last element is empty for some reason. Only need to get the last page number of thread once,
-        # so use while_loop_iterator to only get it once during the first while loop iteration.
+        # Find the thread page-number UI navigation on the page. The last number on the navigation is the last page
+        # of the thread. if it cannot find the page-nav it means it does not exist and there is only one page for the
+        # thread If it finds th¸ page-nav it will find the text (page numbers) and store the last one. Have to use [
+        # -2] because the last element is empty for some reason. Only need to get the last page number of thread
+        # once, so use while_loop_iterator to only get it once during the first while loop iteration.
         if while_loop_iterator == 0:
             last_page_of_thread_soup = soup.find("ul", {"class": "pageNav-main"})
             if last_page_of_thread_soup is None:
@@ -139,9 +139,9 @@ for base_url in thread_url_list:
         # find the date & time that user's replies were posted
         date_soup = soup.findAll("ul", {'class': 'message-attribution-main listInline'})
         date_time_list = []
-        # date and time is found in the '<time>' tag. In the time tag there is a variable called "datetime" that is = to
-        # date of the post and formatted as '2020-09-24T18:28:56-0400', I store this datetime as a list object and slice it
-        # so that I get only '2020-09-24 18:28:56' date_time.
+        # date and time is found in the '<time>' tag. In the time tag there is a variable called "datetime" that is =
+        # to date of the post and formatted as '2020-09-24T18:28:56-0400', I store this datetime as a list object and
+        # slice it so that I get only '2020-09-24 18:28:56' date_time.
         for item in date_soup:
             date_time = item.find('time').attrs['datetime'][0:19]
             date_time_list.append(date_time)
@@ -177,8 +177,8 @@ for base_url in thread_url_list:
             compound_result = sentiment_result_dict.get('compound')
             compound_result_list.append(compound_result)
 
-        # Iterate through the compound_result list to determine whether each score is pos. neut. or neg. Then append this
-        # to the sentiment list
+        # Iterate through the compound_result list to determine whether each score is pos. neut. or neg. Then append
+        # this to the sentiment list
         sentiment_list = []
         for score in compound_result_list:
             if score <= -0.05:
@@ -194,7 +194,7 @@ for base_url in thread_url_list:
         page_of_thread_list = [forum_thread_page_num] * amount_of_replies_on_page
         # combine five lists and convert to DataFrame
         replies_zipped_dict = zip(username_list, date_time_list, compound_result_list, quote_reply_list, sentiment_list,
-                          replies_list, page_of_thread_list)
+                                  replies_list, page_of_thread_list)
         replies_zipped_df = DataFrame(replies_zipped_dict)
         replies_info_df = replies_info_df.append(replies_zipped_df)
 
@@ -207,10 +207,10 @@ for base_url in thread_url_list:
             # Convert date & time columns from string to datetime objects so that they can be manipulated with pandas
             replies_info_df["date_time"] = pd.to_datetime(replies_info_df["date_time"], format="%Y-%m-%d %H:%M:%S")
 
-            # If the this URL has already been scraped there is no need to add the thread info to the db again.
-            # If it has not already been scraped, convert add the first row of the replies_info_df to a dictionary and remove
-            # it from the dataframe. The first row of the dataframe is the creator of the post and the first post of the
-            # thread. This dictionary will be uploaded to the threads table.
+            # If the this URL has already been scraped there is no need to add the thread info to the db again. If it
+            # has not already been scraped, convert add the first row of the replies_info_df to a dictionary and
+            # remove it from the dataframe. The first row of the dataframe is the creator of the post and the first
+            # post of the thread. This dictionary will be uploaded to the threads table.
             if url_has_already_been_scraped == "No":
                 thread_info_dict = replies_info_df.to_dict('records')[0]
                 pop_list = ['sentiment', 'quoted', 'score', 'thread_page']
@@ -222,9 +222,9 @@ for base_url in thread_url_list:
                 replies_info_df = replies_info_df.drop(replies_info_df.index[0])
 
                 # insert url, thread title, etc.. into polls_threads table. 'OR IGNORE' will ignore if record exists
-                table = Table('polls_threads', metadata, autoload=True, autoload_with=engine)
-                insert_statement = insert(table).values(thread_info_dict)
-                results = connection.execute(insert_statement)
+                threads_table = Table('polls_threads', metadata, autoload=True, autoload_with=engine)
+                threads_insert_statement = insert(threads_table).values(thread_info_dict)
+                execute_threads_insert_statement = connection.execute(threads_insert_statement)
 
             """
             # ------Total Replies on a date in Chron order-------#
@@ -340,21 +340,22 @@ for base_url in thread_url_list:
             replies_info_df.to_csv(csv_file_path, index=False, mode="a", header=False, encoding='utf-8-sig')
             """
 
-            # SELECT the primary key 'ID' from the polls_threads record for the URL to use as foreign key in
+            # SELECT the primary key 'thread_id' from the polls_threads record for the URL to use as foreign key in
             # polls_posts
-            url_id_query = connection.execute("SELECT id FROM polls_threads WHERE url = ?", base_url)
-            id_num = url_id_query.fetchone()[0]
+            url_id_query = connection.execute("SELECT thread_id FROM polls_threads WHERE url = ?", base_url)
+            thread_id_num = url_id_query.fetchone()[0]
 
-            # add the primary key from the above code to the dataframe which will be added to the polls_posts table. This
-            # will serve as a foreign key to the polls_threads table
-            replies_info_df.insert(0, 'thread_id', id_num)
+            # add the 'thread_id' primary key from the above code to the dataframe which will be added to the
+            # polls_posts table 'thread_id' column. This will serve as a foreign key to the polls_threads table
+            replies_info_df.insert(0, 'thread_id', thread_id_num)
 
-            # insert usernames, replies, reply sentiment, time of reply dict. into polls_posts table. 'OR IGNORE' will
-            # will skip records that already exist.
+            # insert usernames, replies, reply sentiment, time of reply dict. into polls_posts table. I defined a
+            # composite key for this table this will prevent duplicate records from being added to the DB; 'OR
+            # IGNORE' will will skip records that already exist.
             replies_info_dict = replies_info_df.to_dict(orient='records')
-            table = Table('polls_posts', metadata, autoload=True, autoload_with=engine)
-            insert_statement = insert(table).values(replies_info_dict).prefix_with("OR IGNORE")
-            results = connection.execute(insert_statement)
+            posts_table = Table('polls_posts', metadata, autoload=True, autoload_with=engine)
+            posts_insert_statement = insert(posts_table).values(replies_info_dict).prefix_with("OR IGNORE")
+            execute_posts_insert_statement = connection.execute(posts_insert_statement)
 
             # close the db connection to prevent a database error
             # connection.close()
@@ -362,4 +363,3 @@ for base_url in thread_url_list:
             break
         else:
             forum_thread_page_num = forum_thread_page_num + 1
-
