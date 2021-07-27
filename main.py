@@ -112,7 +112,7 @@ for base_url in thread_url_list:
 
         # Find the thread page-number UI navigation on the page. The last number on the navigation is the last page
         # of the thread. if it cannot find the page-nav it means it does not exist and there is only one page for the
-        # thread If it finds th¸ page-nav it will find the text (page numbers) and store the last one. Have to use [
+        # thread. If it finds the page-nav it will find the text (page numbers) and store the last one. Have to use [
         # -2] because the last element is empty for some reason. Only need to get the last page number of thread
         # once, so use while_loop_iterator to only get it once during the first while loop iteration.
         if while_loop_iterator == 0:
@@ -189,7 +189,8 @@ for base_url in thread_url_list:
                 sentiment = "Positive"
             sentiment_list.append(sentiment)
 
-        # Find the length of the username_list. Then add page numbers to the number
+        # create a list that contains the page number for the current page of the thread.
+        # this number will be added to replies table in DB to indicate which page of the thread a reply occured on.
         amount_of_replies_on_page = len(username_list)
         page_of_thread_list = [forum_thread_page_num] * amount_of_replies_on_page
         # combine five lists and convert to DataFrame
@@ -198,7 +199,7 @@ for base_url in thread_url_list:
         replies_zipped_df = DataFrame(replies_zipped_dict)
         replies_info_df = replies_info_df.append(replies_zipped_df)
 
-        # the script will run this if statement when on the last page of the thread.
+        # if statement will equate to TRUE when on the last page of the thread.
         if forum_thread_page_num == last_page_of_thread:
             # Rename the columns of the dataframe
             replies_info_df = replies_info_df.rename(columns={0: "username", 1: "date_time", 2: "score", 3: "quoted",
