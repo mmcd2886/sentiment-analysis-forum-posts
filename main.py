@@ -1,6 +1,8 @@
 import bs4 as bs
 import pandas as pd
 import requests
+from datetime import date
+from datetime import datetime
 import sqlite3
 import nltk
 import time
@@ -56,12 +58,15 @@ for base_url in thread_url_list:
 
     # https://stackoverflow.com/questions/36439032/how-do-you-pass-through-a-python-variable-into-sqlite3-query
     # Query the last scraped page number using the URL in the posts_threads table. This will be the URL that scraping
-    # starts on so scrapes are not duplicated
+    # starts on so scrapes are not duplicated. If URL has already been scraped, update the last_date_scraped to today's
+    # date
     last_scraped_page_query = connection.execute("SELECT last_page_scraped FROM polls_threads WHERE url = ?", base_url)
     try:
         forum_thread_page_num = int(last_scraped_page_query.fetchone()[0])
-        print("Furthest page scraped is: ", forum_thread_page_num)
         url_has_already_been_scraped = "Yes"
+        todays_date = datetime.now()
+        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?  where url = ?", todays_date, base_url)
+        print("Furthest page scraped is: ", forum_thread_page_num)
     except TypeError:
         url_has_already_been_scraped = "No"
         forum_thread_page_num = 1
@@ -99,8 +104,9 @@ for base_url in thread_url_list:
 
     replies_info_df = pd.DataFrame()
 
-    while_loop_iterator = 0
 
+
+    while_loop_iterator = 0
     while True:
         time.sleep(0.5)
         url = base_url + 'page-' + str(forum_thread_page_num)
@@ -219,7 +225,11 @@ for base_url in thread_url_list:
                 thread_info_dict.update({'url': base_url})
                 thread_info_dict.update({'title': thread_title})
                 thread_info_dict.update({'last_page_scraped': forum_thread_page_num})
+                todays_date = datetime.now()
+                print(todays_date)
+                thread_info_dict.update({'last_date_scraped': todays_date})
                 replies_info_df = replies_info_df.drop(replies_info_df.index[0])
+                print(thread_info_dict)
 
                 # insert url, thread title, etc.. into polls_threads table. 'OR IGNORE' will ignore if record exists
                 threads_table = Table('polls_threads', metadata, autoload=True, autoload_with=engine)
