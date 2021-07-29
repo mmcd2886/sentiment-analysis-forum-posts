@@ -32,6 +32,7 @@ engine = create_engine('sqlite://///Users/default/PycharmProjects/django-forum/m
 metadata = MetaData(bind=engine)
 connection = engine.connect()
 
+
 """
 # User can enter any page of thread
 url_link = input("Enter URL for thread: ").rstrip()
