@@ -65,7 +65,8 @@ for base_url in thread_url_list:
         forum_thread_page_num = int(last_scraped_page_query.fetchone()[0])
         url_has_already_been_scraped = "Yes"
         todays_date = datetime.now()
-        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?  where url = ?", todays_date, base_url)
+        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?  where url = ?",
+                                                     todays_date, base_url)
         print("Furthest page scraped is: ", forum_thread_page_num)
     except TypeError:
         url_has_already_been_scraped = "No"
@@ -103,8 +104,6 @@ for base_url in thread_url_list:
     """
 
     replies_info_df = pd.DataFrame()
-
-
 
     while_loop_iterator = 0
     while True:
