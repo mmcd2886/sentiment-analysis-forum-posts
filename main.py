@@ -12,6 +12,7 @@ from sqlalchemy import create_engine, MetaData, Table, insert
 from nltk.corpus import stopwords
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from pandas import DataFrame
+
 # nltk.download('vader_lexicon')
 # nltk.download('punkt')
 # nltk.download('stopwords')
@@ -32,7 +33,6 @@ engine = create_engine('sqlite://///Users/default/PycharmProjects/django-forum/m
 metadata = MetaData(bind=engine)
 connection = engine.connect()
 
-
 """
 # User can enter any page of thread
 url_link = input("Enter URL for thread: ").rstrip()
@@ -46,32 +46,54 @@ request = requests.get("https://www.resetera.com/forums/gaming-forum.7/")
 response = request.text
 soup = bs.BeautifulSoup(response, 'lxml')
 
-# create a list of urls for the threads on a page.
+# create a list of urls for the threads. exclude the pinned threads. To include pinned threads,
+# thread_url_soup needs to find a class that includes all of the threads. The rest of the logic
+# in this block should be able to remain the same.
 thread_url_list = []
-last_page_of_thread_soup = soup.find("div", {"class": "structItemContainer-group js-threadList"})
-for div in last_page_of_thread_soup.findAll("div", {"class": "structItem-title"}):
-    for url in div.find_all('a', href=True):
+thread_url_soup = soup.find("div", {"class": "structItemContainer-group js-threadList"})
+for tag in thread_url_soup.find_all("div", {"class": "structItem-title"}):
+    for url in tag.find_all('a', href=True):
         thread_url_list.append('https://www.resetera.com' + url['href'])
 
-for base_url in thread_url_list:
+# Find the total number of views and replies for a thread. exclude pinned threads. To include pinned threads,
+# total_thread_views_and_replies_soup needs to find a class that includes all of the threads. The rest of the logic
+# in this block should be able to remain the same.
+total_thread_views_and_replies_list = []
+total_thread_views_and_replies_soup = soup.find("div", {"class": "structItemContainer-group js-threadList"})
+for tag in total_thread_views_and_replies_soup.find_all("li", {"class": "uix_threadRepliesMobile"}):
+    total_thread_views_and_replies = tag.find('dd')
+    if total_thread_views_and_replies is None:
+        pass
+    else:
+        total_thread_views_and_replies = total_thread_views_and_replies.get_text()
+        total_thread_views_and_replies_list.append(total_thread_views_and_replies)
+
+# in the total_thread_views_list, view totals and reply totals alternate. Views start at index 0, replies start at
+# index 1. Get every other element to create the two lists below. e.g. list[0::2], 0 is the starting index,
+# and 2 gets every other element.
+total_thread_views_list = total_thread_views_and_replies_list[0::2]
+total_thread_replies_list = total_thread_views_and_replies_list[1::2]
+
+# this loop will iterate through the url for the thread, total views for the thread, and total replies for the thread
+for base_url, total_views, total_replies in zip(thread_url_list, total_thread_views_list, total_thread_replies_list):
     print(base_url)
 
     # https://stackoverflow.com/questions/36439032/how-do-you-pass-through-a-python-variable-into-sqlite3-query
     # Query the last scraped page number using the URL in the posts_threads table. This will be the URL that scraping
     # starts on so scrapes are not duplicated. If URL has already been scraped, update the last_date_scraped to today's
-    # date
+    # date, update total_views, and total_replies
     last_scraped_page_query = connection.execute("SELECT last_page_scraped FROM polls_threads WHERE url = ?", base_url)
     try:
         forum_thread_page_num = int(last_scraped_page_query.fetchone()[0])
         url_has_already_been_scraped = "Yes"
         todays_date = datetime.now()
-        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?  where url = ?",
-                                                     todays_date, base_url)
+        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?, total_views = ?, total_replies = ?  where url = ?", todays_date, total_views, total_replies, base_url)
         print("Furthest page scraped is: ", forum_thread_page_num)
     except TypeError:
         url_has_already_been_scraped = "No"
         forum_thread_page_num = 1
         print("This url has not been scraped yet")
+
 
     """
     file_name = input("Enter a name for the CSV file. Leave blank to not save: ").rstrip()
@@ -225,11 +247,11 @@ for base_url in thread_url_list:
                 thread_info_dict.update({'url': base_url})
                 thread_info_dict.update({'title': thread_title})
                 thread_info_dict.update({'last_page_scraped': forum_thread_page_num})
+                thread_info_dict.update({'total_views': total_views})
+                thread_info_dict.update({'total_replies': total_replies})
                 todays_date = datetime.now()
-                print(todays_date)
                 thread_info_dict.update({'last_date_scraped': todays_date})
                 replies_info_df = replies_info_df.drop(replies_info_df.index[0])
-                print(thread_info_dict)
 
                 # insert url, thread title, etc.. into polls_threads table. 'OR IGNORE' will ignore if record exists
                 threads_table = Table('polls_threads', metadata, autoload=True, autoload_with=engine)
