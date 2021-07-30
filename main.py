@@ -62,15 +62,12 @@ total_thread_views_and_replies_list = []
 total_thread_views_and_replies_soup = soup.find("div", {"class": "structItemContainer-group js-threadList"})
 for tag in total_thread_views_and_replies_soup.find_all("li", {"class": "uix_threadRepliesMobile"}):
     total_thread_views_and_replies = tag.find('dd')
-    if total_thread_views_and_replies is None:
-        pass
-    else:
-        total_thread_views_and_replies = total_thread_views_and_replies.get_text()
-        total_thread_views_and_replies_list.append(total_thread_views_and_replies)
+    if total_thread_views_and_replies is not None:
+        total_thread_views_and_replies_list.append(total_thread_views_and_replies.get_text())
 
-# in the total_thread_views_list, view totals and reply totals alternate. Views start at index 0, replies start at
-# index 1. Get every other element to create the two lists below. e.g. list[0::2], 0 is the starting index,
-# and 2 gets every other element.
+# in the total_thread_views_and_replies_list, view totals and reply totals alternate. Views start at index 0,
+# replies start at index 1. Get every other element to create the two lists below. e.g. list[0::2], 0 is the starting
+# index, and 2 gets every other element.
 total_thread_views_list = total_thread_views_and_replies_list[0::2]
 total_thread_replies_list = total_thread_views_and_replies_list[1::2]
 
@@ -87,7 +84,8 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
         forum_thread_page_num = int(last_scraped_page_query.fetchone()[0])
         url_has_already_been_scraped = "Yes"
         todays_date = datetime.now()
-        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?, total_views = ?, total_replies = ?  where url = ?", todays_date, total_views, total_replies, base_url)
+        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?, total_views = ?, total_replies = ?  where url = ?",
+                                                     todays_date, total_views, total_replies, base_url)
         print("Furthest page scraped is: ", forum_thread_page_num)
     except TypeError:
         url_has_already_been_scraped = "No"
@@ -193,7 +191,7 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
             reply = reply.find_all(text=True, recursive=False)
             reply = ''.join(reply)  # convert list to string
             reply = reply.replace('\n', ' ')  # remove new lines for paragraphs (combines multiple paragraphs to one)
-            if not reply:  # if reply is empty
+            if not reply:  # if reply contains no text by the user. E.g. only contains a quote or meme
                 reply = 'N/A'
             replies_list.append(reply)
 
