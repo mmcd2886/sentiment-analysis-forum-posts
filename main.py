@@ -65,27 +65,37 @@ for tag in total_thread_views_and_replies_soup.find_all("li", {"class": "uix_thr
     if total_thread_views_and_replies is not None:
         total_thread_views_and_replies_list.append(total_thread_views_and_replies.get_text())
 
-# in the total_thread_views_and_replies_list, view totals and reply totals alternate. Views start at index 0,
-# replies start at index 1. Get every other element to create the two lists below. e.g. list[0::2], 0 is the starting
-# index, and 2 gets every other element.
-total_thread_views_list = total_thread_views_and_replies_list[0::2]
-total_thread_replies_list = total_thread_views_and_replies_list[1::2]
+# numbers in thousands will have commas e.g. 30,231. Remove commas to make data easier to analyze
+total_thread_views_and_replies_no_commas_list = []
+for reply_view in total_thread_views_and_replies_list:
+    reply_view_remove_comma = reply_view.replace(',', '')
+    total_thread_views_and_replies_no_commas_list.append(reply_view_remove_comma)
+
+# in the total_thread_views_and_replies_list_no_commas_list, view totals and reply totals alternate. Views start at
+# index 0, replies start at index 1. Get every other element to create the two lists below. e.g. list[0::2],
+# 0 is the starting index, and 2 gets every other element.
+total_thread_views_list = total_thread_views_and_replies_no_commas_list[0::2]
+total_thread_replies_list = total_thread_views_and_replies_no_commas_list[1::2]
 
 # this loop will iterate through the url for the thread, total views for the thread, and total replies for the thread
 for base_url, total_views, total_replies in zip(thread_url_list, total_thread_views_list, total_thread_replies_list):
     print(base_url)
 
+    # calculate what percentage of people who viewed the thread also replied to the thread.
+    reply_rate_percentage = int(total_replies) / int(total_views) * 100
+    reply_rate_percentage_rounded = round(reply_rate_percentage, 1)
+
     # https://stackoverflow.com/questions/36439032/how-do-you-pass-through-a-python-variable-into-sqlite3-query
     # Query the last scraped page number using the URL in the posts_threads table. This will be the URL that scraping
     # starts on so scrapes are not duplicated. If URL has already been scraped, update the last_date_scraped to today's
-    # date, update total_views, and total_replies
+    # date, update total_views, total_replies, and reply_rate_percentage
     last_scraped_page_query = connection.execute("SELECT last_page_scraped FROM polls_threads WHERE url = ?", base_url)
     try:
         forum_thread_page_num = int(last_scraped_page_query.fetchone()[0])
         url_has_already_been_scraped = "Yes"
         todays_date = datetime.now()
-        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?, total_views = ?, total_replies = ?  where url = ?",
-                                                     todays_date, total_views, total_replies, base_url)
+        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?, total_views = ?, total_replies = ?, reply_rate_percentage = ? where url = ?",
+                                                     todays_date, total_views, total_replies, reply_rate_percentage_rounded, base_url)
         print("Furthest page scraped is: ", forum_thread_page_num)
     except TypeError:
         url_has_already_been_scraped = "No"
@@ -233,7 +243,7 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
             # Convert date & time columns from string to datetime objects so that they can be manipulated with pandas
             replies_info_df["date_time"] = pd.to_datetime(replies_info_df["date_time"], format="%Y-%m-%d %H:%M:%S")
 
-            # If the this URL has already been scraped there is no need to add the thread info to the db again. If it
+            # If the this URL has already been scraped, there is no need to add the thread info to the db again. If it
             # has not already been scraped, convert add the first row of the replies_info_df to a dictionary and
             # remove it from the dataframe. The first row of the dataframe is the creator of the post and the first
             # post of the thread. This dictionary will be uploaded to the threads table.
@@ -247,6 +257,7 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
                 thread_info_dict.update({'last_page_scraped': forum_thread_page_num})
                 thread_info_dict.update({'total_views': total_views})
                 thread_info_dict.update({'total_replies': total_replies})
+                thread_info_dict.update({'reply_rate_percentage': reply_rate_percentage_rounded})
                 todays_date = datetime.now()
                 thread_info_dict.update({'last_date_scraped': todays_date})
                 replies_info_df = replies_info_df.drop(replies_info_df.index[0])
