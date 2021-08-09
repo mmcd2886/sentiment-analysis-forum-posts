@@ -398,6 +398,10 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
             posts_insert_statement = insert(posts_table).values(replies_info_dict).prefix_with("OR IGNORE")
             execute_posts_insert_statement = connection.execute(posts_insert_statement)
 
+            # Count the total number of distinct usernames replies then update this value in the thread table.
+            total_distinct_usernames = connection.execute("SELECT COUNT(DISTINCT username) as usernames FROM polls_posts WHERE thread_id = ?", thread_id_num).fetchone()[0]
+            update_total_distinct_usernames = connection.execute("UPDATE polls_threads SET total_distinct_usernames = ? where thread_id = ?", total_distinct_usernames, thread_id_num)
+
             # close the db connection to prevent a database error
             # connection.close()
             print("Finished\n")
