@@ -34,7 +34,7 @@ metadata = MetaData(bind=engine)
 connection = engine.connect()
 
 """
-# User can enter any page of thread
+# User can enter any page of the thread
 url_link = input("Enter URL for thread: ").rstrip()
 # strip everything after the last / of the URL so that you can append 'page-' to the url
 split = url_link.rsplit("/", 1)
