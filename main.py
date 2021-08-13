@@ -81,10 +81,6 @@ total_thread_replies_list = total_thread_views_and_replies_no_commas_list[1::2]
 for base_url, total_views, total_replies in zip(thread_url_list, total_thread_views_list, total_thread_replies_list):
     print(base_url)
 
-    # calculate what percentage of people who viewed the thread also replied to the thread.
-    reply_rate_percentage = int(total_replies) / int(total_views) * 100
-    reply_rate_percentage_rounded = round(reply_rate_percentage, 1)
-
     # https://stackoverflow.com/questions/36439032/how-do-you-pass-through-a-python-variable-into-sqlite3-query
     # Query the last scraped page number using the URL in the posts_threads table. This will be the URL that scraping
     # starts on so scrapes are not duplicated. If URL has already been scraped, update the last_date_scraped to today's
@@ -94,8 +90,8 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
         forum_thread_page_num = int(last_scraped_page_query.fetchone()[0])
         url_has_already_been_scraped = "Yes"
         todays_date = datetime.now()
-        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?, total_views = ?, total_replies = ?, reply_rate_percentage = ? where url = ?",
-                                                     todays_date, total_views, total_replies, reply_rate_percentage_rounded, base_url)
+        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?, total_views = ?, total_replies = ? where url = ?",
+                                                     todays_date, total_views, total_replies, base_url)
         print("Furthest page scraped is: ", forum_thread_page_num)
     except TypeError:
         url_has_already_been_scraped = "No"
@@ -256,8 +252,6 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
                 thread_info_dict.update({'title': thread_title})
                 thread_info_dict.update({'last_page_scraped': forum_thread_page_num})
                 thread_info_dict.update({'total_views': total_views})
-                thread_info_dict.update({'total_replies': total_replies})
-                thread_info_dict.update({'reply_rate_percentage': reply_rate_percentage_rounded})
                 todays_date = datetime.now()
                 thread_info_dict.update({'last_date_scraped': todays_date})
                 replies_info_df = replies_info_df.drop(replies_info_df.index[0])
@@ -401,6 +395,24 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
             # Count the total number of distinct usernames replies then update this value in the thread table.
             total_distinct_usernames = connection.execute("SELECT COUNT(DISTINCT username) as usernames FROM polls_posts WHERE thread_id = ?", thread_id_num).fetchone()[0]
             update_total_distinct_usernames = connection.execute("UPDATE polls_threads SET total_distinct_usernames = ? where thread_id = ?", total_distinct_usernames, thread_id_num)
+
+            # This code is duplicated
+            # count the total number of replies the update this value in the thread table
+            total_thread_replies = connection.execute("SELECT COUNT(replies) FROM polls_posts WHERE thread_id = ?", thread_id_num).fetchone()[0]
+            update_total_thread_replies = connection.execute("UPDATE polls_threads SET total_replies = ? where thread_id = ?", total_thread_replies, thread_id_num)
+
+            # This code is duplicated
+            # update the reply percentage
+            # calculate what percentage of people who viewed the thread also replied to the thread.
+            reply_rate_percentage = int(total_distinct_usernames) / int(total_views) * 100
+            reply_rate_percentage_rounded = round(reply_rate_percentage, 1)
+            update_reply_rate_percentage = connection.execute("UPDATE polls_threads SET reply_rate_percentage = ? where thread_id = ?", reply_rate_percentage_rounded, thread_id_num)
+
+            # calculate the percent of replies that are written by distinct usernames i.e. of the replies, how many of them were made by unique usernames
+            percent_distinct_replies = int(total_distinct_usernames) / int(total_thread_replies) * 100
+            percent_distinct_replies_rounded = round(percent_distinct_replies, 1)
+            update_percent_distinct_replies = connection.execute("UPDATE polls_threads SET percent_distinct_replies = ? where thread_id = ?", percent_distinct_replies_rounded, thread_id_num)
+
 
             # close the db connection to prevent a database error
             # connection.close()
