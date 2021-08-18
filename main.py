@@ -2,9 +2,9 @@
 # sh "/Applications/Python 3.9/Install Certificates.command"
 # https://stackoverflow.com/questions/41348621/ssl-error-downloading-nltk-data
 import nltk
-#nltk.download('vader_lexicon')
-#nltk.download('punkt')
-#nltk.download('stopwords')
+# nltk.download('vader_lexicon')
+# nltk.download('punkt')
+# nltk.download('stopwords')
 
 import bs4 as bs
 import pandas as pd
@@ -93,14 +93,14 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
         forum_thread_page_num = int(last_scraped_page_query.fetchone()[0])
         url_has_already_been_scraped = "Yes"
         todays_date = datetime.now()
-        update_last_date_scrape = connection.execute("UPDATE polls_threads SET last_date_scraped = ?, total_views = ?, total_replies = ? where url = ?",
-                                                     todays_date, total_views, total_replies, base_url)
+        update_last_date_scrape = connection.execute(
+            "UPDATE polls_threads SET last_date_scraped = ?, total_views = ?, total_replies = ? where url = ?",
+            todays_date, total_views, total_replies, base_url)
         print("Furthest page scraped is: ", forum_thread_page_num)
     except TypeError:
         url_has_already_been_scraped = "No"
         forum_thread_page_num = 1
         print("This url has not been scraped yet")
-
 
     """
     file_name = input("Enter a name for the CSV file. Leave blank to not save: ").rstrip()
@@ -396,26 +396,44 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
             execute_posts_insert_statement = connection.execute(posts_insert_statement)
 
             # Count the total number of distinct usernames replies then update this value in the thread table.
-            total_distinct_usernames = connection.execute("SELECT COUNT(DISTINCT username) as usernames FROM polls_posts WHERE thread_id = ?", thread_id_num).fetchone()[0]
-            update_total_distinct_usernames = connection.execute("UPDATE polls_threads SET total_distinct_usernames = ? where thread_id = ?", total_distinct_usernames, thread_id_num)
+            total_distinct_usernames = \
+            connection.execute("SELECT COUNT(DISTINCT username) as usernames FROM polls_posts WHERE thread_id = ?",
+                               thread_id_num).fetchone()[0]
+            update_total_distinct_usernames = connection.execute(
+                "UPDATE polls_threads SET total_distinct_usernames = ? where thread_id = ?", total_distinct_usernames,
+                thread_id_num)
 
             # This code is duplicated
             # count the total number of replies the update this value in the thread table
-            total_thread_replies = connection.execute("SELECT COUNT(replies) FROM polls_posts WHERE thread_id = ?", thread_id_num).fetchone()[0]
-            update_total_thread_replies = connection.execute("UPDATE polls_threads SET total_replies = ? where thread_id = ?", total_thread_replies, thread_id_num)
+            total_thread_replies = \
+            connection.execute("SELECT COUNT(replies) FROM polls_posts WHERE thread_id = ?", thread_id_num).fetchone()[
+                0]
+            update_total_thread_replies = connection.execute(
+                "UPDATE polls_threads SET total_replies = ? where thread_id = ?", total_thread_replies, thread_id_num)
 
             # This code is duplicated
             # update the reply percentage
             # calculate what percentage of people who viewed the thread also replied to the thread.
-            reply_rate_percentage = int(total_distinct_usernames) / int(total_views) * 100
-            reply_rate_percentage_rounded = round(reply_rate_percentage, 1)
-            update_reply_rate_percentage = connection.execute("UPDATE polls_threads SET reply_rate_percentage = ? where thread_id = ?", reply_rate_percentage_rounded, thread_id_num)
+            # trying to divide zero will cause error so use if statement
+            if int(total_distinct_usernames) != 0:
+                reply_rate_percentage = int(total_distinct_usernames) / int(total_views) * 100
+                reply_rate_percentage_rounded = round(reply_rate_percentage, 1)
+            else:
+                reply_rate_percentage_rounded = 0
+            update_reply_rate_percentage = connection.execute(
+                "UPDATE polls_threads SET reply_rate_percentage = ? where thread_id = ?", reply_rate_percentage_rounded,
+                thread_id_num)
 
             # calculate the percent of replies that are written by distinct usernames i.e. of the replies, how many of them were made by unique usernames
-            percent_distinct_replies = int(total_distinct_usernames) / int(total_thread_replies) * 100
-            percent_distinct_replies_rounded = round(percent_distinct_replies, 1)
-            update_percent_distinct_replies = connection.execute("UPDATE polls_threads SET percent_distinct_replies = ? where thread_id = ?", percent_distinct_replies_rounded, thread_id_num)
-
+            # trying to divide zero will cause error so use if statement
+            if int(total_distinct_usernames) != 0:
+                percent_distinct_replies = int(total_distinct_usernames) / int(total_thread_replies) * 100
+                percent_distinct_replies_rounded = round(percent_distinct_replies, 1)
+            else:
+                percent_distinct_replies_rounded = 0
+            update_percent_distinct_replies = connection.execute(
+                "UPDATE polls_threads SET percent_distinct_replies = ? where thread_id = ?",
+                percent_distinct_replies_rounded, thread_id_num)
 
             # close the db connection to prevent a database error
             # connection.close()
