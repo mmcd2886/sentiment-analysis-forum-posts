@@ -389,51 +389,57 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
 
             # insert usernames, replies, reply sentiment, time of reply dict. into polls_posts table. I defined a
             # composite key for this table this will prevent duplicate records from being added to the DB; 'OR
-            # IGNORE' will will skip records that already exist.
-            replies_info_dict = replies_info_df.to_dict(orient='records')
-            posts_table = Table('polls_posts', metadata, autoload=True, autoload_with=engine)
-            posts_insert_statement = insert(posts_table).values(replies_info_dict).prefix_with("OR IGNORE")
-            execute_posts_insert_statement = connection.execute(posts_insert_statement)
+            # IGNORE' will will skip records that already exist. SQLite has a limit to how many records it can
+            # insert at a time. The for loop will iterate over 500 dictionaries in the replies_info_dict_list for
+            # each iteration. This will prevent exceeding the insert limit which throws an error.
+            # https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks?page=1&tab=votes#tab-top
+            replies_info_dict_list = replies_info_df.to_dict(orient='records')
+            for dict_list in range(0, len(replies_info_dict_list), 500):
+                replies_info_dict_sub_list = replies_info_dict_list[dict_list:dict_list + 500]
+                posts_table = Table('polls_posts', metadata, autoload=True, autoload_with=engine)
+                posts_insert_statement = insert(posts_table).values(replies_info_dict_sub_list).prefix_with("OR IGNORE")
+                execute_posts_insert_statement = connection.execute(posts_insert_statement)
 
-            # Count the total number of distinct usernames replies then update this value in the thread table.
-            total_distinct_usernames = \
-            connection.execute("SELECT COUNT(DISTINCT username) as usernames FROM polls_posts WHERE thread_id = ?",
-                               thread_id_num).fetchone()[0]
-            update_total_distinct_usernames = connection.execute(
-                "UPDATE polls_threads SET total_distinct_usernames = ? where thread_id = ?", total_distinct_usernames,
-                thread_id_num)
+                # Count the total number of distinct usernames replies then update this value in the thread table.
+                total_distinct_usernames = \
+                connection.execute("SELECT COUNT(DISTINCT username) as usernames FROM polls_posts WHERE thread_id = ?",
+                                   thread_id_num).fetchone()[0]
+                update_total_distinct_usernames = connection.execute(
+                    "UPDATE polls_threads SET total_distinct_usernames = ? where thread_id = ?", total_distinct_usernames,
+                    thread_id_num)
 
-            # This code is duplicated
-            # count the total number of replies the update this value in the thread table
-            total_thread_replies = \
-            connection.execute("SELECT COUNT(replies) FROM polls_posts WHERE thread_id = ?", thread_id_num).fetchone()[
-                0]
-            update_total_thread_replies = connection.execute(
-                "UPDATE polls_threads SET total_replies = ? where thread_id = ?", total_thread_replies, thread_id_num)
+                # This code is duplicated
+                # count the total number of replies the update this value in the thread table
+                total_thread_replies = \
+                connection.execute("SELECT COUNT(replies) FROM polls_posts WHERE thread_id = ?", thread_id_num).fetchone()[
+                    0]
+                update_total_thread_replies = connection.execute(
+                    "UPDATE polls_threads SET total_replies = ? where thread_id = ?", total_thread_replies, thread_id_num)
 
-            # This code is duplicated
-            # update the reply percentage
-            # calculate what percentage of people who viewed the thread also replied to the thread.
-            # trying to divide zero will cause error so use if statement
-            if int(total_distinct_usernames) != 0:
-                reply_rate_percentage = int(total_distinct_usernames) / int(total_views) * 100
-                reply_rate_percentage_rounded = round(reply_rate_percentage, 1)
-            else:
-                reply_rate_percentage_rounded = 0
-            update_reply_rate_percentage = connection.execute(
-                "UPDATE polls_threads SET reply_rate_percentage = ? where thread_id = ?", reply_rate_percentage_rounded,
-                thread_id_num)
+                # This code is duplicated
+                # update the reply percentage
+                # calculate what percentage of people who viewed the thread also replied to the thread.
+                # trying to divide zero will cause error so use if statement
+                if int(total_distinct_usernames) != 0:
+                    reply_rate_percentage = int(total_distinct_usernames) / int(total_views) * 100
+                    reply_rate_percentage_rounded = round(reply_rate_percentage, 1)
+                else:
+                    reply_rate_percentage_rounded = 0
+                update_reply_rate_percentage = connection.execute(
+                    "UPDATE polls_threads SET reply_rate_percentage = ? where thread_id = ?", reply_rate_percentage_rounded,
+                    thread_id_num)
 
-            # calculate the percent of replies that are written by distinct usernames i.e. of the replies, how many of them were made by unique usernames
-            # trying to divide zero will cause error so use if statement
-            if int(total_distinct_usernames) != 0:
-                percent_distinct_replies = int(total_distinct_usernames) / int(total_thread_replies) * 100
-                percent_distinct_replies_rounded = round(percent_distinct_replies, 1)
-            else:
-                percent_distinct_replies_rounded = 0
-            update_percent_distinct_replies = connection.execute(
-                "UPDATE polls_threads SET percent_distinct_replies = ? where thread_id = ?",
-                percent_distinct_replies_rounded, thread_id_num)
+                # calculate the percent of replies that are written by distinct usernames i.e. of the replies,
+                # how many of them were made by unique usernames trying to divide zero will cause error so use if
+                # statement
+                if int(total_distinct_usernames) != 0:
+                    percent_distinct_replies = int(total_distinct_usernames) / int(total_thread_replies) * 100
+                    percent_distinct_replies_rounded = round(percent_distinct_replies, 1)
+                else:
+                    percent_distinct_replies_rounded = 0
+                update_percent_distinct_replies = connection.execute(
+                    "UPDATE polls_threads SET percent_distinct_replies = ? where thread_id = ?",
+                    percent_distinct_replies_rounded, thread_id_num)
 
             # close the db connection to prevent a database error
             # connection.close()
