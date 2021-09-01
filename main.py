@@ -431,7 +431,7 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
 
                 # calculate the percent of replies that are written by distinct usernames i.e. of the replies,
                 # how many of them were made by unique usernames trying to divide zero will cause error so use if
-                # statement
+                # statement.
                 if int(total_distinct_usernames) != 0:
                     percent_distinct_replies = int(total_distinct_usernames) / int(total_thread_replies) * 100
                     percent_distinct_replies_rounded = round(percent_distinct_replies, 1)
