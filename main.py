@@ -88,13 +88,13 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
     # Query the last scraped page number using the URL in the posts_threads table. This will be the URL that scraping
     # starts on so scrapes are not duplicated. If URL has already been scraped, update the last_date_scraped to today's
     # date, update total_views, total_replies, and reply_rate_percentage
-    last_scraped_page_query = connection.execute("SELECT last_page_scraped FROM polls_threads WHERE url = ?", base_url)
+    last_scraped_page_query = connection.execute("SELECT last_page_scraped FROM forum_threads WHERE url = ?", base_url)
     try:
         forum_thread_page_num = int(last_scraped_page_query.fetchone()[0])
         url_has_already_been_scraped = "Yes"
         todays_date = datetime.now()
         update_last_date_scrape = connection.execute(
-            "UPDATE polls_threads SET last_date_scraped = ?, total_views = ?, total_replies = ? where url = ?",
+            "UPDATE forum_threads SET last_date_scraped = ?, total_views = ?, total_replies = ? where url = ?",
             todays_date, total_views, total_replies, base_url)
         print("Furthest page scraped is: ", forum_thread_page_num)
     except TypeError:
@@ -259,8 +259,8 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
                 thread_info_dict.update({'last_date_scraped': todays_date})
                 replies_info_df = replies_info_df.drop(replies_info_df.index[0])
 
-                # insert url, thread title, etc.. into polls_threads table. 'OR IGNORE' will ignore if record exists
-                threads_table = Table('polls_threads', metadata, autoload=True, autoload_with=engine)
+                # insert url, thread title, etc.. into forum_threads table. 'OR IGNORE' will ignore if record exists
+                threads_table = Table('forum_threads', metadata, autoload=True, autoload_with=engine)
                 threads_insert_statement = insert(threads_table).values(thread_info_dict)
                 execute_threads_insert_statement = connection.execute(threads_insert_statement)
 
@@ -378,16 +378,16 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
             replies_info_df.to_csv(csv_file_path, index=False, mode="a", header=False, encoding='utf-8-sig')
             """
 
-            # SELECT the primary key 'thread_id' from the polls_threads record for the URL to use as foreign key in
-            # polls_posts
-            url_id_query = connection.execute("SELECT thread_id FROM polls_threads WHERE url = ?", base_url)
+            # SELECT the primary key 'thread_id' from the forum_threads record for the URL to use as foreign key in
+            # forum_posts
+            url_id_query = connection.execute("SELECT thread_id FROM forum_threads WHERE url = ?", base_url)
             thread_id_num = url_id_query.fetchone()[0]
 
             # add the 'thread_id' primary key from the above code to the dataframe which will be added to the
-            # polls_posts table 'thread_id' column. This will serve as a foreign key to the polls_threads table
+            # forum_posts table 'thread_id' column. This will serve as a foreign key to the forum_threads table
             replies_info_df.insert(0, 'thread_id', thread_id_num)
 
-            # insert usernames, replies, reply sentiment, time of reply dict. into polls_posts table. I defined a
+            # insert usernames, replies, reply sentiment, time of reply dict. into forum_posts table. I defined a
             # composite key for this table this will prevent duplicate records from being added to the DB; 'OR
             # IGNORE' will will skip records that already exist. SQLite has a limit to how many records it can
             # insert at a time. The for loop will iterate over 500 dictionaries in the replies_info_dict_list for
@@ -396,25 +396,25 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
             replies_info_dict_list = replies_info_df.to_dict(orient='records')
             for dict_list in range(0, len(replies_info_dict_list), 500):
                 replies_info_dict_sub_list = replies_info_dict_list[dict_list:dict_list + 500]
-                posts_table = Table('polls_posts', metadata, autoload=True, autoload_with=engine)
+                posts_table = Table('forum_posts', metadata, autoload=True, autoload_with=engine)
                 posts_insert_statement = insert(posts_table).values(replies_info_dict_sub_list).prefix_with("OR IGNORE")
                 execute_posts_insert_statement = connection.execute(posts_insert_statement)
 
                 # Count the total number of distinct usernames replies then update this value in the thread table.
                 total_distinct_usernames = \
-                connection.execute("SELECT COUNT(DISTINCT username) as usernames FROM polls_posts WHERE thread_id = ?",
+                connection.execute("SELECT COUNT(DISTINCT username) as usernames FROM forum_posts WHERE thread_id = ?",
                                    thread_id_num).fetchone()[0]
                 update_total_distinct_usernames = connection.execute(
-                    "UPDATE polls_threads SET total_distinct_usernames = ? where thread_id = ?", total_distinct_usernames,
+                    "UPDATE forum_threads SET total_distinct_usernames = ? where thread_id = ?", total_distinct_usernames,
                     thread_id_num)
 
                 # This code is duplicated
                 # count the total number of replies the update this value in the thread table
                 total_thread_replies = \
-                connection.execute("SELECT COUNT(replies) FROM polls_posts WHERE thread_id = ?", thread_id_num).fetchone()[
+                connection.execute("SELECT COUNT(replies) FROM forum_posts WHERE thread_id = ?", thread_id_num).fetchone()[
                     0]
                 update_total_thread_replies = connection.execute(
-                    "UPDATE polls_threads SET total_replies = ? where thread_id = ?", total_thread_replies, thread_id_num)
+                    "UPDATE forum_threads SET total_replies = ? where thread_id = ?", total_thread_replies, thread_id_num)
 
                 # This code is duplicated
                 # update the reply percentage
@@ -426,7 +426,7 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
                 else:
                     reply_rate_percentage_rounded = 0
                 update_reply_rate_percentage = connection.execute(
-                    "UPDATE polls_threads SET reply_rate_percentage = ? where thread_id = ?", reply_rate_percentage_rounded,
+                    "UPDATE forum_threads SET reply_rate_percentage = ? where thread_id = ?", reply_rate_percentage_rounded,
                     thread_id_num)
 
                 # calculate the percent of replies that are written by distinct usernames i.e. of the replies,
@@ -438,7 +438,7 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
                 else:
                     percent_distinct_replies_rounded = 0
                 update_percent_distinct_replies = connection.execute(
-                    "UPDATE polls_threads SET percent_distinct_replies = ? where thread_id = ?",
+                    "UPDATE forum_threads SET percent_distinct_replies = ? where thread_id = ?",
                     percent_distinct_replies_rounded, thread_id_num)
 
             # close the db connection to prevent a database error
