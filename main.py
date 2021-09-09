@@ -224,7 +224,7 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
             sentiment_list.append(sentiment)
 
         # create a list that contains the page number for the current page of the thread.
-        # this number will be added to replies table in DB to indicate which page of the thread a reply occured on.
+        # this number will be added to replies table in DB to indicate which page of the thread a reply occurred on.
         amount_of_replies_on_page = len(username_list)
         page_of_thread_list = [forum_thread_page_num] * amount_of_replies_on_page
         # combine five lists and convert to DataFrame
@@ -257,6 +257,7 @@ for base_url, total_views, total_replies in zip(thread_url_list, total_thread_vi
                 thread_info_dict.update({'total_views': total_views})
                 todays_date = datetime.now()
                 thread_info_dict.update({'last_date_scraped': todays_date})
+                thread_info_dict.update({'watch_list': 'no'})
                 replies_info_df = replies_info_df.drop(replies_info_df.index[0])
 
                 # insert url, thread title, etc.. into forum_threads table. 'OR IGNORE' will ignore if record exists
