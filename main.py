@@ -2,9 +2,10 @@
 # sh "/Applications/Python 3.9/Install Certificates.command"
 # https://stackoverflow.com/questions/41348621/ssl-error-downloading-nltk-data
 import nltk
-# nltk.download('vader_lexicon')
-# nltk.download('punkt')
-# nltk.download('stopwords')
+
+#nltk.download('vader_lexicon')
+#nltk.download('punkt')
+#nltk.download('stopwords')
 
 import bs4 as bs
 import pandas as pd
@@ -32,7 +33,7 @@ new_words = {
 sid.lexicon.update(new_words)
 
 # Connect to SQLITE DB
-engine = create_engine('sqlite://///Users/untitled/PycharmProjects/django-forum/mysite/db.sqlite3')
+engine = create_engine('sqlite://///Users/computer/PycharmProjects/django-forum/mysite/db.sqlite3')
 metadata = MetaData(bind=engine)
 connection = engine.connect()
 
